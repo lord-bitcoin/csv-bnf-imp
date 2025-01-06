@@ -50,7 +50,7 @@ if uploaded_file is not None:
         current_btc_holding = st.sidebar.number_input("Current BTC Holding", value=0.5, min_value=0.0, step=0.1)
         current_btc_value = st.sidebar.number_input("Current BTC Value (EUR)", value=100000, min_value=0)
 
-        # Filter BTC data
+        # Use filtered data for BTC calculations
         btc_data = filtered_data[filtered_data['Asset'] == 'BTC']
 
         btc_bought = btc_data[btc_data['Transaction Type'] == 'buy']['Amount Asset'].sum()
