@@ -1,77 +1,63 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from io import BytesIO
 
-# Function to load the uploaded Excel file
-def load_data(uploaded_file):
-    errors = []
-    try:
-        data = pd.read_excel(uploaded_file, engine='openpyxl')
-        data['Amount Fiat'] = pd.to_numeric(data['Amount Fiat'], errors='coerce')
-        data['Amount Asset'] = pd.to_numeric(data['Amount Asset'], errors='coerce')
-        data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
-        data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
-        data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
-        # Ensure 'Date' column is in datetime format
-        if 'Date' in data.columns:
-            data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
-        return data, errors
-    except Exception as e:
-        errors.append(str(e))
-        return pd.DataFrame(), errors
+# Fonction pour transformer les données du fichier Bitpanda au format désiré
+def transformer_donnees_bitpanda(file):
+    # Lecture du fichier CSV
+    df = pd.read_csv(file)
 
-# Streamlit app starts here
-st.title("Bitcoin Trading Analysis - Excel Only")
+    # Exemple de transformation : personnaliser selon vos besoins réels
+    # Supposons qu'il y a des colonnes à mapper, renommer ou filtrer
 
-# File uploader
-uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
-if uploaded_file is not None:
-    data, errors = load_data(uploaded_file)
+    # 1. Renommer les colonnes (adaptez selon le fichier fourni)
+    df = df.rename(columns={
+        'ColumnA': 'NouvelleColonneA',  # Exemple : Changez les noms selon vos données
+        'ColumnB': 'NouvelleColonneB',
+    })
 
-    if errors:
-        st.warning(f"Errors encountered during file processing: {', '.join(errors)}")
-    
-    if not data.empty:
-        # Filter BTC data
-        btc_data = data[data['Asset'] == 'BTC']
+    # 2. Filtrer ou transformer les données (adaptez selon les transformations requises)
+    df['NouvelleColonneC'] = df['NouvelleColonneA'] * 2  # Exemple transformation
 
-        # Sort data by year if 'Date' column exists
-        if 'Date' in data.columns:
-            data['Year'] = data['Date'].dt.year
-            sorted_data = data.sort_values(by='Year')
-        else:
-            sorted_data = data
+    # 3. Reformatage ou réorganisation des colonnes
+    df = df[['NouvelleColonneA', 'NouvelleColonneB', 'NouvelleColonneC']]  # Ordre final des colonnes
 
-        # Display sorted data
-        st.header("Sorted Data by Year")
-        st.dataframe(sorted_data)
+    return df
 
-        # Export to Excel
-        st.markdown("### Export Sorted Transactions Data to Excel")
-        output = BytesIO()
-        sorted_data.to_excel(output, index=False, engine='openpyxl')
+# Streamlit application
+st.title("Transformation des données Bitpanda vers un fichier XLSX")
+
+# Upload des fichiers
+uploaded_csv = st.file_uploader("Téléchargez votre fichier Bitpanda CSV", type="csv")
+
+if uploaded_csv is not None:
+    # Afficher un aperçu des données
+    st.write("Aperçu des données chargées :")
+    df_original = pd.read_csv(uploaded_csv)
+    st.dataframe(df_original.head())
+
+    # Transformer les données
+    df_transforme = transformer_donnees_bitpanda(uploaded_csv)
+
+    # Afficher un aperçu des données transformées
+    st.write("Aperçu des données transformées :")
+    st.dataframe(df_transforme.head())
+
+    # Bouton pour télécharger le fichier transformé
+    @st.cache
+def convertir_excel(df):
+        import io
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            df.to_excel(writer, index=False, sheet_name="DonnéesTransformées")
         output.seek(0)
+        return output
 
-        st.download_button(
-            label="Download Sorted Excel File",
-            data=output,
-            file_name="sorted_transactions_analysis.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+    excel_data = convertir_excel(df_transforme)
+    st.download_button(
+        label="Télécharger les données transformées en format XLSX",
+        data=excel_data,
+        file_name="données_transformées.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
-        # Visualizations
-        st.header("Visualizations")
-
-        # Transactions by year (if 'Year' column exists)
-        if 'Year' in sorted_data.columns:
-            transactions_by_year = sorted_data.groupby('Year').size()
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.bar(transactions_by_year.index, transactions_by_year.values)
-            ax.set_title("Transactions by Year", fontsize=16)
-            ax.set_xlabel("Year", fontsize=14)
-            ax.set_ylabel("Number of Transactions", fontsize=14)
-            st.pyplot(fig)
-
-else:
-    st.info("Please upload an Excel file to begin.")
+st.info("Téléchargez un fichier CSV Bitpanda pour démarrer.")
