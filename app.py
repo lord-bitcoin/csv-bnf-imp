@@ -31,18 +31,23 @@ if uploaded_file is not None:
 
                 st.write("Aperçu des données transformées :", data.head())
 
-                # Bouton de téléchargement
+                # Bouton de téléchargement au format Excel
                 @st.cache_data
-                def convert_df_to_csv(df):
-                    return df.to_csv(index=False).encode('utf-8')
+                def convert_df_to_excel(df):
+                    from io import BytesIO
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        df.to_excel(writer, index=False, sheet_name='Sheet1')
+                    processed_data = output.getvalue()
+                    return processed_data
 
-                csv = convert_df_to_csv(data)
+                excel_data = convert_df_to_excel(data)
 
                 st.download_button(
-                    label="Télécharger le fichier transformé",
-                    data=csv,
-                    file_name="transformed_data.csv",
-                    mime="text/csv",
+                    label="Télécharger le fichier transformé (XLSX)",
+                    data=excel_data,
+                    file_name="transformed_data.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             except Exception as e:
                 st.error(f"Erreur lors de la transformation : {e}")
