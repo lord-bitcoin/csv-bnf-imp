@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import PyPDF2
-import io
 
 # Fonction pour extraire le texte d'un fichier PDF
 def extract_text_from_pdf(pdf_file):
@@ -32,6 +31,8 @@ def process_data(data):
         # Vérifier si la ligne a suffisamment de colonnes
         if len(row_data) >= len(columns):
             transactions.append(row_data[:len(columns)])  # Garder uniquement le bon nombre de colonnes
+        else:
+            st.warning(f"Ligne ignorée : {row}")
 
     # Vérifier si des transactions valides ont été trouvées
     if not transactions:
