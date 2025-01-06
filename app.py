@@ -12,6 +12,7 @@ def load_data(uploaded_file):
         data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
         data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
         data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
+        data['Year'] = pd.to_datetime(data['Timestamp']).dt.year
         return data, errors
     except Exception as e:
         errors.append(str(e))
@@ -35,6 +36,15 @@ def calculate_realized_profit_fifo(btc_data):
                 buys[0][0] -= sell_amount
                 sell_amount = 0
     return realized_profit
+
+# Function to generate yearly summary
+def yearly_summary(data):
+    yearly_data = data.groupby('Year').agg(
+        Total_Bought=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'buy') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
+        Total_Sold=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'sell') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
+        Total_Transactions=('Transaction ID', 'count')
+    )
+    return yearly_data
 
 # Streamlit app starts here
 st.title("Bitcoin Trading Analysis")
@@ -73,8 +83,11 @@ if uploaded_file is not None:
         flat_tax = realized_profit * 0.30  # Flat Tax (30%)
         progressive_tax = realized_profit * 0.11 if realized_profit <= 10000 else realized_profit * 0.30
 
+        # Generate yearly summary
+        yearly_data = yearly_summary(data)
+
         # Tabs for navigation
-        tab1, tab2, tab3 = st.tabs(["Résumé", "Transactions Data", "Graphiques"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Résumé", "Transactions Data", "Graphiques", "Résumé Annuel"])
 
         with tab1:
             st.header("Summary Metrics")
@@ -116,6 +129,10 @@ if uploaded_file is not None:
             for i, v in enumerate([realized_profit, unrealized_profit]):
                 ax2.text(i, v + 100, f"{v:.2f}", ha='center')
             st.pyplot(fig2)
+
+        with tab4:
+            st.header("Yearly Summary")
+            st.dataframe(yearly_data)
 
 else:
     st.info("Please upload a CSV file to begin.")
