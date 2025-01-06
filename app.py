@@ -14,16 +14,19 @@ def convert_csv_to_excel(csv_file):
 
         # Check if Timestamp column exists
         if 'Timestamp' in csv_data.columns:
-            # Convert Timestamp to datetime
-            csv_data['Timestamp'] = pd.to_datetime(csv_data['Timestamp'], errors='coerce', utc=True)
+            # Convert Timestamp to numeric, then back to datetime
+            csv_data['Timestamp_numeric'] = pd.to_datetime(csv_data['Timestamp'], errors='coerce', utc=True).view('int64')
+            csv_data['Timestamp'] = pd.to_datetime(csv_data['Timestamp_numeric'], errors='coerce', unit='ns', utc=True)
 
-            # Fill Year, Month, and Day columns if they exist and are empty
-            if 'Year' in csv_data.columns:
-                csv_data['Year'] = csv_data['Timestamp'].dt.year
-            if 'Month' in csv_data.columns:
-                csv_data['Month'] = csv_data['Timestamp'].dt.month
-            if 'Day' in csv_data.columns:
-                csv_data['Day'] = csv_data['Timestamp'].dt.day
+            # Identify and report invalid timestamps
+            invalid_timestamps = csv_data[csv_data['Timestamp'].isna()]
+            if not invalid_timestamps.empty:
+                st.warning(f"Some timestamps could not be parsed. Invalid rows: {len(invalid_timestamps)}")
+
+            # Fill Year, Month, and Day columns systematically
+            csv_data['Year'] = csv_data['Timestamp'].dt.year
+            csv_data['Month'] = csv_data['Timestamp'].dt.month
+            csv_data['Day'] = csv_data['Timestamp'].dt.day
 
             # Remove timezone info from Timestamp
             csv_data['Timestamp'] = csv_data['Timestamp'].dt.tz_localize(None)
