@@ -14,7 +14,7 @@ if uploaded_file is not None:
     # Lecture du fichier CSV
     try:
         data = pd.read_csv(uploaded_file, skiprows=skip_rows)
-        st.write("Aperçu des données chargées :", (data)
+        st.write("Aperçu des données chargées :", data)
 
         # Vérifiez si une colonne de timestamp est présente
         timestamp_col = st.selectbox(
