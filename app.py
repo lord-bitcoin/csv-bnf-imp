@@ -12,7 +12,16 @@ def load_data(uploaded_file):
         data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
         data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
         data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
-        data['Year'] = pd.to_datetime(data['Timestamp']).dt.year
+        
+        # Ensure Timestamp is datetime
+        if 'Timestamp' in data.columns:
+            data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
+            if data['Timestamp'].isnull().any():
+                errors.append("Some timestamps could not be converted to datetime.")
+            data['Year'] = data['Timestamp'].dt.year
+        else:
+            errors.append("Timestamp column is missing.")
+        
         return data, errors
     except Exception as e:
         errors.append(str(e))
@@ -39,12 +48,15 @@ def calculate_realized_profit_fifo(btc_data):
 
 # Function to generate yearly summary
 def yearly_summary(data):
-    yearly_data = data.groupby('Year').agg(
-        Total_Bought=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'buy') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
-        Total_Sold=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'sell') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
-        Total_Transactions=('Transaction ID', 'count')
-    )
-    return yearly_data
+    if 'Year' in data.columns:
+        yearly_data = data.groupby('Year').agg(
+            Total_Bought=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'buy') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
+            Total_Sold=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'sell') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
+            Total_Transactions=('Transaction ID', 'count')
+        )
+        return yearly_data
+    else:
+        return pd.DataFrame()
 
 # Streamlit app starts here
 st.title("Bitcoin Trading Analysis")
