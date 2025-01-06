@@ -16,8 +16,10 @@ def load_data(uploaded_file):
         # Ensure Timestamp is datetime
         if 'Timestamp' in data.columns:
             data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
-            if data['Timestamp'].isnull().any():
-                errors.append("Some timestamps could not be converted to datetime.")
+            invalid_timestamps = data['Timestamp'].isnull().sum()
+            if invalid_timestamps > 0:
+                errors.append(f"{invalid_timestamps} rows have invalid timestamps and will be excluded.")
+            data = data.dropna(subset=['Timestamp'])
             data['Year'] = data['Timestamp'].dt.year
             data['Month'] = data['Timestamp'].dt.month
             data['Day'] = data['Timestamp'].dt.day
