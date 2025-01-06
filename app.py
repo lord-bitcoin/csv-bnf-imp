@@ -21,7 +21,7 @@ if uploaded_file is not None:
         delimiter = None
         if detect_delimiter:
             sample = uploaded_file.read(1024).decode('utf-8')
-            uploaded_file.seek(0)  # Réinitialiser la position du fichier
+            uploaded_file.seek(0)
             sniffer = csv.Sniffer()
             delimiter = sniffer.sniff(sample).delimiter
 
@@ -37,10 +37,7 @@ if uploaded_file is not None:
         # Transformer la colonne timestamp
         if timestamp_col:
             try:
-                # Convertir la colonne Timestamp
                 data[timestamp_col] = pd.to_datetime(data[timestamp_col], errors='coerce')
-
-                # Ajouter les colonnes Year, Month et Day
                 data['Year'] = data[timestamp_col].dt.year
                 data['Month'] = data[timestamp_col].dt.month
                 data['Day'] = data[timestamp_col].dt.day
