@@ -12,10 +12,6 @@ def load_data(uploaded_file):
         data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
         data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
         data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
-        # Convert Timestamp column to datetime
-        data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
-        # Create Year column
-        data['Year'] = data['Timestamp'].dt.year
         return data, errors
     except Exception as e:
         errors.append(str(e))
@@ -77,13 +73,6 @@ if uploaded_file is not None:
         flat_tax = realized_profit * 0.30  # Flat Tax (30%)
         progressive_tax = realized_profit * 0.11 if realized_profit <= 10000 else realized_profit * 0.30
 
-        # Group data by year
-        yearly_summary = data.groupby('Year').agg(
-            Total_Bought=('Amount Asset', 'sum'),
-            Total_Sold=('Amount Fiat', 'sum'),
-            Transactions=('Timestamp', 'count')
-        )
-
         # Tabs for navigation
         tab1, tab2, tab3 = st.tabs(["Résumé", "Transactions Data", "Graphiques"])
 
@@ -97,9 +86,6 @@ if uploaded_file is not None:
             st.write(f"**Flat Tax:** {flat_tax:.2f} EUR")
             st.write(f"**Progressive Tax (approx):** {progressive_tax:.2f} EUR")
 
-            st.subheader("Yearly Summary")
-            st.dataframe(yearly_summary)
-
         with tab2:
             st.header("Transaction Data")
             st.dataframe(data)
@@ -107,15 +93,29 @@ if uploaded_file is not None:
         with tab3:
             st.header("Visualizations")
 
-            # Profit evolution graph by year
-            fig, ax = plt.subplots(figsize=(10, 6))
-            yearly_summary['Total_Bought'].plot(kind='bar', ax=ax, label='Total Bought')
-            yearly_summary['Total_Sold'].plot(kind='bar', ax=ax, label='Total Sold', alpha=0.7, color='orange')
-            ax.set_title("Yearly Trading Summary", fontsize=16)
-            ax.set_xlabel("Year", fontsize=14)
-            ax.set_ylabel("Amount", fontsize=14)
-            ax.legend()
-            st.pyplot(fig)
+            # Top assets by total fiat value
+            asset_summary = data.groupby('Asset').agg(
+                Total_Fiat=('Amount Fiat', 'sum'),
+                Total_Asset=('Amount Asset', 'sum')
+            ).sort_values(by='Total_Fiat', ascending=False).head(10)
+
+            fig1, ax1 = plt.subplots(figsize=(10, 6))
+            ax1.bar(asset_summary.index, asset_summary['Total_Fiat'])
+            ax1.set_title("Top 10 Assets by Fiat Value", fontsize=16)
+            ax1.set_xlabel("Asset", fontsize=14)
+            ax1.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
+            for i, v in enumerate(asset_summary['Total_Fiat']):
+                ax1.text(i, v + 100, f"{v:.2f}", ha='center')
+            st.pyplot(fig1)
+
+            # Profit evolution graph
+            fig2, ax2 = plt.subplots(figsize=(10, 6))
+            ax2.plot(["Realized", "Unrealized"], [realized_profit, unrealized_profit], marker='o')
+            ax2.set_title("Profit Evolution", fontsize=16)
+            ax2.set_ylabel("EUR", fontsize=14)
+            for i, v in enumerate([realized_profit, unrealized_profit]):
+                ax2.text(i, v + 100, f"{v:.2f}", ha='center')
+            st.pyplot(fig2)
 
 else:
     st.info("Please upload a CSV file to begin.")
