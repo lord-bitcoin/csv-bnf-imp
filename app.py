@@ -8,8 +8,7 @@ def load_data(uploaded_file):
     data['Amount Fiat'] = pd.to_numeric(data['Amount Fiat'], errors='coerce')
     data['Amount Asset'] = pd.to_numeric(data['Amount Asset'], errors='coerce')
     data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
-    data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
-    data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
+    data['Fee Asset'] = pd.to_numeric(data['Fee Asset'], errors='coerce')
     return data
 
 # Streamlit app starts here
@@ -19,6 +18,12 @@ st.title("Bitcoin Trading Analysis")
 uploaded_file = st.file_uploader("Upload your CSV file", type="csv")
 if uploaded_file is not None:
     data = load_data(uploaded_file)
+
+    # Ajouter une colonne pour les frais en EUR
+    data['Fee Fiat'] = data['Fee Asset'] * data['Asset market price']
+
+    # Calculer le total des frais
+    total_fees = data['Fee Fiat'].sum()
 
     # Sidebar input for BTC holdings and current value
     st.sidebar.header("BTC Analysis")
@@ -49,6 +54,7 @@ if uploaded_file is not None:
         st.write(f"**Total BTC Bought:** {btc_bought:.6f} BTC")
         st.write(f"**Total BTC Sold:** {btc_sold:.6f} BTC")
         st.write(f"**BTC Remaining:** {btc_remaining:.6f} BTC")
+        st.write(f"**Total Fees (EUR):** {total_fees:.2f} EUR")
         st.write(f"**Realized Profit:** {realized_profit:.2f} EUR")
         st.write(f"**Unrealized Profit:** {unrealized_profit:.2f} EUR")
 
