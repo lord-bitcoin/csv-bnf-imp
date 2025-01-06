@@ -17,15 +17,28 @@ def load_data(uploaded_file):
         if 'Timestamp' in data.columns:
             data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
             invalid_timestamps = data[data['Timestamp'].isnull()]
+
+            # Automatically handle invalid timestamps by estimating values
             if not invalid_timestamps.empty:
-                errors.append(f"{len(invalid_timestamps)} rows have invalid timestamps and will be excluded. Here are some examples:")
-                errors.append(invalid_timestamps.head().to_string(index=False))
+                errors.append(f"{len(invalid_timestamps)} rows have invalid timestamps and will be estimated.")
+                for idx in invalid_timestamps.index:
+                    previous_timestamp = data.loc[idx - 1, 'Timestamp'] if idx - 1 in data.index else None
+                    next_timestamp = data.loc[idx + 1, 'Timestamp'] if idx + 1 in data.index else None
 
-            data = data.dropna(subset=['Timestamp'])
+                    if pd.notnull(previous_timestamp) and pd.notnull(next_timestamp):
+                        # Interpolate between previous and next timestamps
+                        estimated_timestamp = previous_timestamp + (next_timestamp - previous_timestamp) / 2
+                    elif pd.notnull(previous_timestamp):
+                        # Assume a reasonable increment if only previous timestamp is available
+                        estimated_timestamp = previous_timestamp + pd.Timedelta(days=1)
+                    elif pd.notnull(next_timestamp):
+                        # Assume a reasonable decrement if only next timestamp is available
+                        estimated_timestamp = next_timestamp - pd.Timedelta(days=1)
+                    else:
+                        # Default fallback if no context is available
+                        estimated_timestamp = pd.Timestamp('1970-01-01')
 
-            if not pd.api.types.is_datetime64_any_dtype(data['Timestamp']):
-                errors.append("Timestamp column could not be converted to datetime.")
-                return pd.DataFrame(), errors
+                    data.loc[idx, 'Timestamp'] = estimated_timestamp
 
             data['Year'] = data['Timestamp'].dt.year
             data['Month'] = data['Timestamp'].dt.month
