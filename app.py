@@ -14,16 +14,21 @@ def convert_csv_to_excel(csv_file):
 
         # Check if Timestamp column exists
         if 'Timestamp' in csv_data.columns:
-            # Add Year, Month, and Day columns
+            # Convert Timestamp to datetime
             csv_data['Timestamp'] = pd.to_datetime(csv_data['Timestamp'], errors='coerce', utc=True)
-            csv_data['Year'] = csv_data['Timestamp'].dt.year
-            csv_data['Month'] = csv_data['Timestamp'].dt.month
-            csv_data['Day'] = csv_data['Timestamp'].dt.day
+
+            # Fill Year, Month, and Day columns if they exist and are empty
+            if 'Year' in csv_data.columns:
+                csv_data['Year'] = csv_data['Timestamp'].dt.year
+            if 'Month' in csv_data.columns:
+                csv_data['Month'] = csv_data['Timestamp'].dt.month
+            if 'Day' in csv_data.columns:
+                csv_data['Day'] = csv_data['Timestamp'].dt.day
 
             # Remove timezone info from Timestamp
             csv_data['Timestamp'] = csv_data['Timestamp'].dt.tz_localize(None)
         else:
-            st.warning("Timestamp column not found. Year, Month, and Day columns will not be added.")
+            st.warning("Timestamp column not found. Year, Month, and Day columns will not be updated.")
 
         # Convert DataFrame to Excel
         output = BytesIO()
