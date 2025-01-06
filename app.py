@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import csv
 
 # Titre de l'application
 st.title("Transformation de Timestamp dans un fichier CSV")
@@ -8,12 +9,24 @@ st.title("Transformation de Timestamp dans un fichier CSV")
 uploaded_file = st.file_uploader("Téléversez un fichier CSV", type=["csv"])
 
 if uploaded_file is not None:
-    # Option pour indiquer le nombre de lignes à sauter
-    skip_rows = st.number_input("Nombre de lignes à sauter (si nécessaire)", min_value=0, value=0)
+    # Option pour ignorer les lignes de métadonnées
+    skip_rows = st.number_input("Nombre de lignes à sauter (lignes de métadonnées)", min_value=0, value=0)
+    
+    # Option pour détecter automatiquement le délimiteur
+    detect_delimiter = st.checkbox("Détecter automatiquement le délimiteur", value=True)
 
     # Lecture du fichier CSV
     try:
-        data = pd.read_csv(uploaded_file, skiprows=skip_rows)
+        # Détecter le délimiteur si l'option est cochée
+        delimiter = None
+        if detect_delimiter:
+            sample = uploaded_file.read(1024).decode('utf-8')
+            uploaded_file.seek(0)
+            sniffer = csv.Sniffer()
+            delimiter = sniffer.sniff(sample).delimiter
+
+        # Charger les données
+        data = pd.read_csv(uploaded_file, skiprows=skip_rows, delimiter=delimiter)
         st.write("Aperçu des données chargées :", data.head())
 
         # Vérifiez si une colonne de timestamp est présente
