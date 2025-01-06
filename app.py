@@ -12,41 +12,10 @@ def load_data(uploaded_file):
         data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
         data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
         data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
-
-        # Ensure Timestamp is datetime
-        if 'Timestamp' in data.columns:
-            data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
-            invalid_timestamps = data[data['Timestamp'].isnull()]
-
-            # Automatically handle invalid timestamps by estimating values
-            if not invalid_timestamps.empty:
-                errors.append(f"{len(invalid_timestamps)} rows have invalid timestamps and will be estimated.")
-                for idx in invalid_timestamps.index:
-                    previous_timestamp = data.loc[idx - 1, 'Timestamp'] if idx - 1 in data.index else None
-                    next_timestamp = data.loc[idx + 1, 'Timestamp'] if idx + 1 in data.index else None
-
-                    if pd.notnull(previous_timestamp) and pd.notnull(next_timestamp):
-                        # Interpolate between previous and next timestamps
-                        estimated_timestamp = previous_timestamp + (next_timestamp - previous_timestamp) / 2
-                    elif pd.notnull(previous_timestamp):
-                        # Assume a reasonable increment if only previous timestamp is available
-                        estimated_timestamp = previous_timestamp + pd.Timedelta(days=1)
-                    elif pd.notnull(next_timestamp):
-                        # Assume a reasonable decrement if only next timestamp is available
-                        estimated_timestamp = next_timestamp - pd.Timedelta(days=1)
-                    else:
-                        # Default fallback if no context is available
-                        estimated_timestamp = pd.Timestamp('1970-01-01')
-
-                    data.loc[idx, 'Timestamp'] = estimated_timestamp
-
-            data['Year'] = data['Timestamp'].dt.year
-            data['Month'] = data['Timestamp'].dt.month
-            data['Day'] = data['Timestamp'].dt.day
-            data['Hour'] = data['Timestamp'].dt.hour
-        else:
-            errors.append("Timestamp column is missing.")
-
+        # Convert Timestamp column to datetime
+        data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
+        # Create Year column
+        data['Year'] = data['Timestamp'].dt.year
         return data, errors
     except Exception as e:
         errors.append(str(e))
@@ -71,18 +40,6 @@ def calculate_realized_profit_fifo(btc_data):
                 sell_amount = 0
     return realized_profit
 
-# Function to generate yearly summary
-def yearly_summary(data):
-    if 'Year' in data.columns:
-        yearly_data = data.groupby('Year').agg(
-            Total_Bought=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'buy') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
-            Total_Sold=('Amount Fiat', lambda x: data[(data['Transaction Type'] == 'sell') & (data['Amount Fiat'] > 0)]['Amount Fiat'].sum()),
-            Total_Transactions=('Transaction ID', 'count')
-        )
-        return yearly_data
-    else:
-        return pd.DataFrame()
-
 # Streamlit app starts here
 st.title("Bitcoin Trading Analysis")
 
@@ -92,8 +49,8 @@ if uploaded_file is not None:
     data, errors = load_data(uploaded_file)
 
     if errors:
-        st.warning(f"Errors encountered during file processing: {'; '.join(errors)}")
-
+        st.warning(f"Errors encountered during file processing: {', '.join(errors)}")
+    
     if not data.empty:
         # Sidebar input for BTC holdings and current value
         st.sidebar.header("BTC Analysis")
@@ -120,11 +77,15 @@ if uploaded_file is not None:
         flat_tax = realized_profit * 0.30  # Flat Tax (30%)
         progressive_tax = realized_profit * 0.11 if realized_profit <= 10000 else realized_profit * 0.30
 
-        # Generate yearly summary
-        yearly_data = yearly_summary(data)
+        # Group data by year
+        yearly_summary = data.groupby('Year').agg(
+            Total_Bought=('Amount Asset', 'sum'),
+            Total_Sold=('Amount Fiat', 'sum'),
+            Transactions=('Timestamp', 'count')
+        )
 
         # Tabs for navigation
-        tab1, tab2, tab3, tab4 = st.tabs(["Résumé", "Transactions Data", "Graphiques", "Résumé Annuel"])
+        tab1, tab2, tab3 = st.tabs(["Résumé", "Transactions Data", "Graphiques"])
 
         with tab1:
             st.header("Summary Metrics")
@@ -136,6 +97,9 @@ if uploaded_file is not None:
             st.write(f"**Flat Tax:** {flat_tax:.2f} EUR")
             st.write(f"**Progressive Tax (approx):** {progressive_tax:.2f} EUR")
 
+            st.subheader("Yearly Summary")
+            st.dataframe(yearly_summary)
+
         with tab2:
             st.header("Transaction Data")
             st.dataframe(data)
@@ -143,33 +107,15 @@ if uploaded_file is not None:
         with tab3:
             st.header("Visualizations")
 
-            # Top assets by total fiat value
-            asset_summary = data.groupby('Asset').agg(
-                Total_Fiat=('Amount Fiat', 'sum'),
-                Total_Asset=('Amount Asset', 'sum')
-            ).sort_values(by='Total_Fiat', ascending=False).head(10)
-
-            fig1, ax1 = plt.subplots(figsize=(10, 6))
-            ax1.bar(asset_summary.index, asset_summary['Total_Fiat'])
-            ax1.set_title("Top 10 Assets by Fiat Value", fontsize=16)
-            ax1.set_xlabel("Asset", fontsize=14)
-            ax1.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
-            for i, v in enumerate(asset_summary['Total_Fiat']):
-                ax1.text(i, v + 100, f"{v:.2f}", ha='center')
-            st.pyplot(fig1)
-
-            # Profit evolution graph
-            fig2, ax2 = plt.subplots(figsize=(10, 6))
-            ax2.plot(["Realized", "Unrealized"], [realized_profit, unrealized_profit], marker='o')
-            ax2.set_title("Profit Evolution", fontsize=16)
-            ax2.set_ylabel("EUR", fontsize=14)
-            for i, v in enumerate([realized_profit, unrealized_profit]):
-                ax2.text(i, v + 100, f"{v:.2f}", ha='center')
-            st.pyplot(fig2)
-
-        with tab4:
-            st.header("Yearly Summary")
-            st.dataframe(yearly_data)
+            # Profit evolution graph by year
+            fig, ax = plt.subplots(figsize=(10, 6))
+            yearly_summary['Total_Bought'].plot(kind='bar', ax=ax, label='Total Bought')
+            yearly_summary['Total_Sold'].plot(kind='bar', ax=ax, label='Total Sold', alpha=0.7, color='orange')
+            ax.set_title("Yearly Trading Summary", fontsize=16)
+            ax.set_xlabel("Year", fontsize=14)
+            ax.set_ylabel("Amount", fontsize=14)
+            ax.legend()
+            st.pyplot(fig)
 
 else:
     st.info("Please upload a CSV file to begin.")
