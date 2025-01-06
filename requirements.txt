@@ -1,3 +1,6 @@
-streamlit
-pandas
-csv
+streamlit==1.26.0
+pandas==1.5.3
+matplotlib
+sqlalchemy
+sqlite3
+openpyxl
