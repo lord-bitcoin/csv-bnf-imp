@@ -20,6 +20,11 @@ def load_data(uploaded_file):
             if invalid_timestamps > 0:
                 errors.append(f"{invalid_timestamps} rows have invalid timestamps and will be excluded.")
             data = data.dropna(subset=['Timestamp'])
+
+            if not pd.api.types.is_datetime64_any_dtype(data['Timestamp']):
+                errors.append("Timestamp column could not be converted to datetime.")
+                return pd.DataFrame(), errors
+
             data['Year'] = data['Timestamp'].dt.year
             data['Month'] = data['Timestamp'].dt.month
             data['Day'] = data['Timestamp'].dt.day
