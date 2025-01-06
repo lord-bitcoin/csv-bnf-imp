@@ -10,6 +10,7 @@ def load_data(uploaded_file):
     data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
     data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
     data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
+    data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
     return data
 
 # Streamlit app starts here
@@ -27,6 +28,7 @@ if uploaded_file is not None:
 
     # Filter BTC data
     btc_data = data[data['Asset'] == 'BTC']
+    btc_data['Year'] = btc_data['Date'].dt.year
 
     btc_bought = btc_data[btc_data['Transaction Type'] == 'buy']['Amount Asset'].sum()
     btc_bought_cost = btc_data[btc_data['Transaction Type'] == 'buy']['Amount Fiat'].sum()
@@ -45,12 +47,36 @@ if uploaded_file is not None:
     tab1, tab2, tab3 = st.tabs(["Résumé", "Transactions Data", "Graphiques"])
 
     with tab1:
-        st.header("Summary Metrics")
-        st.write(f"**Total BTC Bought:** {btc_bought:.6f} BTC")
-        st.write(f"**Total BTC Sold:** {btc_sold:.6f} BTC")
-        st.write(f"**BTC Remaining:** {btc_remaining:.6f} BTC")
-        st.write(f"**Realized Profit:** {realized_profit:.2f} EUR")
-        st.write(f"**Unrealized Profit:** {unrealized_profit:.2f} EUR")
+        st.header("Résumé")
+        
+        # Get unique years in descending order
+        unique_years = sorted(btc_data['Year'].dropna().unique(), reverse=True)
+        
+        # Create sub-tabs for each year
+        year_tabs = st.tabs([str(year) for year in unique_years])
+        
+        for i, year in enumerate(unique_years):
+            with year_tabs[i]:
+                year_data = btc_data[btc_data['Year'] == year]
+                
+                btc_bought_year = year_data[year_data['Transaction Type'] == 'buy']['Amount Asset'].sum()
+                btc_bought_cost_year = year_data[year_data['Transaction Type'] == 'buy']['Amount Fiat'].sum()
+
+                btc_sold_year = year_data[year_data['Transaction Type'] == 'sell']['Amount Asset'].sum()
+                btc_sold_revenue_year = year_data[year_data['Transaction Type'] == 'sell']['Amount Fiat'].sum()
+
+                btc_remaining_year = btc_bought_year - btc_sold_year
+                realized_profit_year = (
+                    btc_sold_revenue_year
+                    - (btc_sold_year / btc_bought_year * btc_bought_cost_year)
+                ) if btc_bought_year > 0 else 0
+                
+                # Display metrics for the year
+                st.write(f"### Année {year}")
+                st.write(f"**BTC Acheté :** {btc_bought_year:.6f} BTC")
+                st.write(f"**BTC Vendu :** {btc_sold_year:.6f} BTC")
+                st.write(f"**BTC Restant :** {btc_remaining_year:.6f} BTC")
+                st.write(f"**Profit Réalisé :** {realized_profit_year:.2f} EUR")
 
     with tab2:
         st.header("Transaction Data")
