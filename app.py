@@ -12,16 +12,19 @@ def load_data(uploaded_file):
         data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
         data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
         data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
-        
+
         # Ensure Timestamp is datetime
         if 'Timestamp' in data.columns:
             data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
             if data['Timestamp'].isnull().any():
                 errors.append("Some timestamps could not be converted to datetime.")
             data['Year'] = data['Timestamp'].dt.year
+            data['Month'] = data['Timestamp'].dt.month
+            data['Day'] = data['Timestamp'].dt.day
+            data['Hour'] = data['Timestamp'].dt.hour
         else:
             errors.append("Timestamp column is missing.")
-        
+
         return data, errors
     except Exception as e:
         errors.append(str(e))
@@ -68,7 +71,7 @@ if uploaded_file is not None:
 
     if errors:
         st.warning(f"Errors encountered during file processing: {', '.join(errors)}")
-    
+
     if not data.empty:
         # Sidebar input for BTC holdings and current value
         st.sidebar.header("BTC Analysis")
