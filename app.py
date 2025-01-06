@@ -54,7 +54,7 @@ if uploaded_file is not None:
 
     with tab2:
         st.header("Transaction Data")
-        st.dataframe(data.head())
+        st.dataframe(data)
 
     with tab3:
         st.header("Visualizations")
