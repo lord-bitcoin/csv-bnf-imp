@@ -16,9 +16,11 @@ def load_data(uploaded_file):
         # Ensure Timestamp is datetime
         if 'Timestamp' in data.columns:
             data['Timestamp'] = pd.to_datetime(data['Timestamp'], errors='coerce')
-            invalid_timestamps = data['Timestamp'].isnull().sum()
-            if invalid_timestamps > 0:
-                errors.append(f"{invalid_timestamps} rows have invalid timestamps and will be excluded.")
+            invalid_timestamps = data[data['Timestamp'].isnull()]
+            if not invalid_timestamps.empty:
+                errors.append(f"{len(invalid_timestamps)} rows have invalid timestamps and will be excluded. Here are some examples:")
+                errors.append(invalid_timestamps.head().to_string(index=False))
+
             data = data.dropna(subset=['Timestamp'])
 
             if not pd.api.types.is_datetime64_any_dtype(data['Timestamp']):
@@ -77,7 +79,7 @@ if uploaded_file is not None:
     data, errors = load_data(uploaded_file)
 
     if errors:
-        st.warning(f"Errors encountered during file processing: {', '.join(errors)}")
+        st.warning(f"Errors encountered during file processing: {'; '.join(errors)}")
 
     if not data.empty:
         # Sidebar input for BTC holdings and current value
