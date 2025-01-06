@@ -23,11 +23,19 @@ def process_data(data):
         "Product ID", "Fee", "Fee asset", "Spread", "Spread Currency", "Tax Fiat"
     ]
 
-    # Filtrer les lignes contenant les transactions
+    # Filtrer les lignes contenant des transactions
     transactions = []
     for row in rows:
-        if any(asset in row for asset in ["BTC", "ETH", "BEST", "DOGE"]):  # Simplifié pour les exemples
-            transactions.append(row.split())
+        # Diviser chaque ligne en colonnes
+        row_data = row.split()
+        
+        # Vérifier si la ligne a suffisamment de colonnes
+        if len(row_data) >= len(columns):
+            transactions.append(row_data[:len(columns)])  # Garder uniquement le bon nombre de colonnes
+
+    # Vérifier si des transactions valides ont été trouvées
+    if not transactions:
+        raise ValueError("Aucune transaction valide trouvée dans les données extraites.")
 
     # Convertir les transactions en DataFrame
     df = pd.DataFrame(transactions, columns=columns[:len(transactions[0])])
@@ -81,16 +89,19 @@ if uploaded_file is not None:
     text_data = extract_text_from_pdf(uploaded_file)
 
     # Traiter les données
-    df = process_data(text_data)
+    try:
+        df = process_data(text_data)
 
-    # Afficher les données
-    st.subheader("Transactions Filtrées")
-    st.dataframe(df)
+        # Afficher les données
+        st.subheader("Transactions Filtrées")
+        st.dataframe(df)
 
-    # Calculer les indicateurs
-    indicators = calculate_indicators(df)
+        # Calculer les indicateurs
+        indicators = calculate_indicators(df)
 
-    # Afficher les indicateurs
-    st.subheader("Conclusions")
-    for key, value in indicators.items():
-        st.write(f"{key}: {value}")
+        # Afficher les indicateurs
+        st.subheader("Conclusions")
+        for key, value in indicators.items():
+            st.write(f"{key}: {value}")
+    except ValueError as e:
+        st.error(f"Erreur lors du traitement des données : {e}")
