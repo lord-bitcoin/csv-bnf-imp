@@ -9,7 +9,10 @@ def load_data(uploaded_file):
     data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
     data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
     data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
-    data['Year'] = pd.to_datetime(data['Timestamp'], errors='coerce').dt.year
+    if 'Timestamp' in data.columns:
+        data['Year'] = pd.to_datetime(data['Timestamp'], errors='coerce').dt.year
+    else:
+        data['Year'] = None
     return data
 
 # Streamlit app starts here
@@ -53,14 +56,17 @@ if uploaded_file is not None:
     st.write(f"**Unrealized Profit:** {unrealized_profit:.2f} EUR")
 
     # Group data by year
-    yearly_summary = data.groupby('Year').agg(
-        Total_Fiat=('Amount Fiat', 'sum'),
-        Total_Asset=('Amount Asset', 'sum'),
-        Total_Fees=('Fee', 'sum'),
-        Transaction_Count=('Transaction ID', 'count')
-    ).reset_index()
+    if 'Year' in data.columns and data['Year'].notna().any():
+        yearly_summary = data.groupby('Year').agg(
+            Total_Fiat=('Amount Fiat', 'sum'),
+            Total_Asset=('Amount Asset', 'sum'),
+            Total_Fees=('Fee', 'sum'),
+            Transaction_Count=('Transaction ID', 'count')
+        ).reset_index()
 
-    st.header("Yearly Summary")
-    st.dataframe(yearly_summary)
+        st.header("Yearly Summary")
+        st.dataframe(yearly_summary)
+    else:
+        st.warning("No valid timestamps found to generate yearly summary.")
 else:
     st.info("Please upload a CSV file to begin.")
