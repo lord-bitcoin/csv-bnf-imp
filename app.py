@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
 # Function to load the uploaded CSV file
 def load_data(uploaded_file):
@@ -10,6 +9,7 @@ def load_data(uploaded_file):
     data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
     data['Fee'] = pd.to_numeric(data['Fee'], errors='coerce')
     data['Tax Fiat'] = pd.to_numeric(data['Tax Fiat'], errors='coerce')
+    data['Year'] = pd.to_datetime(data['Timestamp'], errors='coerce').dt.year
     return data
 
 # Streamlit app starts here
@@ -52,33 +52,15 @@ if uploaded_file is not None:
     st.write(f"**Realized Profit:** {realized_profit:.2f} EUR")
     st.write(f"**Unrealized Profit:** {unrealized_profit:.2f} EUR")
 
-    # Plot data
-    st.header("Visualizations")
-
-    # Top assets by total fiat value
-    asset_summary = data.groupby('Asset').agg(
+    # Group data by year
+    yearly_summary = data.groupby('Year').agg(
         Total_Fiat=('Amount Fiat', 'sum'),
-        Total_Asset=('Amount Asset', 'sum')
-    ).sort_values(by='Total_Fiat', ascending=False).head(10)
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(asset_summary.index, asset_summary['Total_Fiat'])
-    ax.set_title("Top 10 Assets by Fiat Value", fontsize=16)
-    ax.set_xlabel("Asset", fontsize=14)
-    ax.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
-    st.pyplot(fig)
-
-    # Transaction type summary
-    transaction_summary = data.groupby('Transaction Type').agg(
-        Total_Fiat=('Amount Fiat', 'sum'),
+        Total_Asset=('Amount Asset', 'sum'),
+        Total_Fees=('Fee', 'sum'),
         Transaction_Count=('Transaction ID', 'count')
-    )
+    ).reset_index()
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(transaction_summary.index, transaction_summary['Total_Fiat'])
-    ax.set_title("Total Fiat Value by Transaction Type", fontsize=16)
-    ax.set_xlabel("Transaction Type", fontsize=14)
-    ax.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
-    st.pyplot(fig)
+    st.header("Yearly Summary")
+    st.dataframe(yearly_summary)
 else:
     st.info("Please upload a CSV file to begin.")
