@@ -8,9 +8,12 @@ st.title("Transformation de Timestamp dans un fichier CSV")
 uploaded_file = st.file_uploader("Téléversez un fichier CSV", type=["csv"])
 
 if uploaded_file is not None:
+    # Option pour indiquer le nombre de lignes à sauter
+    skip_rows = st.number_input("Nombre de lignes à sauter (si nécessaire)", min_value=0, value=0)
+
     # Lecture du fichier CSV
     try:
-        data = pd.read_csv(uploaded_file)
+        data = pd.read_csv(uploaded_file, skiprows=skip_rows)
         st.write("Aperçu des données chargées :", data.head())
 
         # Vérifiez si une colonne de timestamp est présente
