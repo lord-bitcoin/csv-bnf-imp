@@ -14,7 +14,7 @@ def extract_text_from_pdf(pdf_file):
 def process_data(data):
     # Diviser les données par lignes
     rows = data.split("\n")
-    
+
     # Identifier les colonnes et les données correspondantes
     columns = [
         "Transaction ID", "Timestamp", "Transaction Type", "In/Out", "Amount Fiat", "Fiat", 
@@ -27,20 +27,21 @@ def process_data(data):
     for row in rows:
         # Diviser chaque ligne en colonnes
         row_data = row.split()
-        
-        # Vérifier si la ligne a suffisamment de colonnes
+
+        # Vérifier si la ligne contient les données nécessaires
         if len(row_data) >= len(columns):
-            transactions.append(row_data[:len(columns)])  # Garder uniquement le bon nombre de colonnes
+            row_data = row_data[:len(columns)]  # Limiter au bon nombre de colonnes
+            transactions.append(row_data)
         else:
-            st.warning(f"Ligne ignorée : {row}")
+            st.warning(f"Ligne ignorée (format incorrect) : {row}")
 
     # Vérifier si des transactions valides ont été trouvées
     if not transactions:
         raise ValueError("Aucune transaction valide trouvée dans les données extraites.")
 
     # Convertir les transactions en DataFrame
-    df = pd.DataFrame(transactions, columns=columns[:len(transactions[0])])
-    
+    df = pd.DataFrame(transactions, columns=columns)
+
     # Convertir les colonnes numériques
     numeric_columns = ["Amount Fiat", "Amount Asset", "Asset market price", "Fee", "Spread", "Tax Fiat"]
     for col in numeric_columns:
