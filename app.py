@@ -1,12 +1,15 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+from io import BytesIO
 
 # Function to load the uploaded CSV file
 def load_data(uploaded_file):
     errors = []
     try:
         data = pd.read_csv(uploaded_file, skiprows=6, delimiter=',', on_bad_lines='skip')
+        data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
+        data['Year'] = data['Date'].dt.year  # Extract fiscal year
         data['Amount Fiat'] = pd.to_numeric(data['Amount Fiat'], errors='coerce')
         data['Amount Asset'] = pd.to_numeric(data['Amount Asset'], errors='coerce')
         data['Asset market price'] = pd.to_numeric(data['Asset market price'], errors='coerce')
@@ -36,6 +39,15 @@ def calculate_realized_profit_fifo(btc_data):
                 sell_amount = 0
     return realized_profit
 
+# Function to export data grouped by fiscal years to Excel
+def export_to_excel_by_year(data):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        for year, group in data.groupby('Year'):
+            group.to_excel(writer, index=False, sheet_name=str(year))
+    output.seek(0)
+    return output
+
 # Streamlit app starts here
 st.title("Bitcoin Trading Analysis")
 
@@ -48,6 +60,8 @@ if uploaded_file is not None:
         st.warning(f"Errors encountered during file processing: {', '.join(errors)}")
     
     if not data.empty:
+        st.success(f"File loaded successfully: {uploaded_file.name}")
+
         # Sidebar input for BTC holdings and current value
         st.sidebar.header("BTC Analysis")
         current_btc_holding = st.sidebar.number_input("Current BTC Holding", value=0.5, min_value=0.0, step=0.1)
@@ -74,7 +88,7 @@ if uploaded_file is not None:
         progressive_tax = realized_profit * 0.11 if realized_profit <= 10000 else realized_profit * 0.30
 
         # Tabs for navigation
-        tab1, tab2, tab3 = st.tabs(["Résumé", "Transactions Data", "Graphiques"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Résumé", "Transactions Data", "Graphiques", "Export Excel"])
 
         with tab1:
             st.header("Summary Metrics")
@@ -117,5 +131,17 @@ if uploaded_file is not None:
                 ax2.text(i, v + 100, f"{v:.2f}", ha='center')
             st.pyplot(fig2)
 
+        with tab4:
+            st.header("Export Data by Fiscal Year")
+            excel_data = export_to_excel_by_year(data)
+            st.download_button(
+                label="Download Excel File (by Fiscal Year)",
+                data=excel_data,
+                file_name="Transactions_By_Fiscal_Year.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+    else:
+        st.warning("No valid data found in the file.")
 else:
     st.info("Please upload a CSV file to begin.")
