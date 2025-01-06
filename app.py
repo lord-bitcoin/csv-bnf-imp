@@ -41,44 +41,48 @@ if uploaded_file is not None:
     realized_profit = btc_sold_revenue - (btc_sold / btc_bought * btc_bought_cost) if btc_bought > 0 else 0
     unrealized_profit = total_btc_value - (btc_remaining / btc_bought * btc_bought_cost) if btc_bought > 0 else 0
 
-    # Display data and results
-    st.header("Transaction Data")
-    st.dataframe(data.head())
+    # Tabs for navigation
+    tab1, tab2, tab3 = st.tabs(["Résumé", "Transactions Data", "Graphiques"])
 
-    st.header("Summary Metrics")
-    st.write(f"**Total BTC Bought:** {btc_bought:.6f} BTC")
-    st.write(f"**Total BTC Sold:** {btc_sold:.6f} BTC")
-    st.write(f"**BTC Remaining:** {btc_remaining:.6f} BTC")
-    st.write(f"**Realized Profit:** {realized_profit:.2f} EUR")
-    st.write(f"**Unrealized Profit:** {unrealized_profit:.2f} EUR")
+    with tab1:
+        st.header("Summary Metrics")
+        st.write(f"**Total BTC Bought:** {btc_bought:.6f} BTC")
+        st.write(f"**Total BTC Sold:** {btc_sold:.6f} BTC")
+        st.write(f"**BTC Remaining:** {btc_remaining:.6f} BTC")
+        st.write(f"**Realized Profit:** {realized_profit:.2f} EUR")
+        st.write(f"**Unrealized Profit:** {unrealized_profit:.2f} EUR")
 
-    # Plot data
-    st.header("Visualizations")
+    with tab2:
+        st.header("Transaction Data")
+        st.dataframe(data.head())
 
-    # Top assets by total fiat value
-    asset_summary = data.groupby('Asset').agg(
-        Total_Fiat=('Amount Fiat', 'sum'),
-        Total_Asset=('Amount Asset', 'sum')
-    ).sort_values(by='Total_Fiat', ascending=False).head(10)
+    with tab3:
+        st.header("Visualizations")
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(asset_summary.index, asset_summary['Total_Fiat'])
-    ax.set_title("Top 10 Assets by Fiat Value", fontsize=16)
-    ax.set_xlabel("Asset", fontsize=14)
-    ax.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
-    st.pyplot(fig)
+        # Top assets by total fiat value
+        asset_summary = data.groupby('Asset').agg(
+            Total_Fiat=('Amount Fiat', 'sum'),
+            Total_Asset=('Amount Asset', 'sum')
+        ).sort_values(by='Total_Fiat', ascending=False).head(10)
 
-    # Transaction type summary
-    transaction_summary = data.groupby('Transaction Type').agg(
-        Total_Fiat=('Amount Fiat', 'sum'),
-        Transaction_Count=('Transaction ID', 'count')
-    )
+        fig1, ax1 = plt.subplots(figsize=(10, 6))
+        ax1.bar(asset_summary.index, asset_summary['Total_Fiat'])
+        ax1.set_title("Top 10 Assets by Fiat Value", fontsize=16)
+        ax1.set_xlabel("Asset", fontsize=14)
+        ax1.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
+        st.pyplot(fig1)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(transaction_summary.index, transaction_summary['Total_Fiat'])
-    ax.set_title("Total Fiat Value by Transaction Type", fontsize=16)
-    ax.set_xlabel("Transaction Type", fontsize=14)
-    ax.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
-    st.pyplot(fig)
+        # Transaction type summary
+        transaction_summary = data.groupby('Transaction Type').agg(
+            Total_Fiat=('Amount Fiat', 'sum'),
+            Transaction_Count=('Transaction ID', 'count')
+        )
+
+        fig2, ax2 = plt.subplots(figsize=(10, 6))
+        ax2.bar(transaction_summary.index, transaction_summary['Total_Fiat'])
+        ax2.set_title("Total Fiat Value by Transaction Type", fontsize=16)
+        ax2.set_xlabel("Transaction Type", fontsize=14)
+        ax2.set_ylabel("Total Fiat Value (EUR)", fontsize=14)
+        st.pyplot(fig2)
 else:
     st.info("Please upload a CSV file to begin.")
