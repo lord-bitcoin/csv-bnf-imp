@@ -1,63 +1,49 @@
 import streamlit as st
 import pandas as pd
 
-# Fonction pour transformer les données du fichier Bitpanda au format désiré
-def transformer_donnees_bitpanda(file):
+# Titre de l'application
+st.title("Transformation de Timestamp dans un fichier CSV")
+
+# Téléchargement du fichier
+uploaded_file = st.file_uploader("Téléversez un fichier CSV", type=["csv"])
+
+if uploaded_file is not None:
     # Lecture du fichier CSV
-    df = pd.read_csv(file)
+    try:
+        data = pd.read_csv(uploaded_file)
+        st.write("Aperçu des données chargées :", data.head())
 
-    # Exemple de transformation : personnaliser selon vos besoins réels
-    # Supposons qu'il y a des colonnes à mapper, renommer ou filtrer
+        # Vérifiez si une colonne de timestamp est présente
+        timestamp_col = st.selectbox(
+            "Sélectionnez la colonne Timestamp", data.columns
+        )
 
-    # 1. Renommer les colonnes (adaptez selon le fichier fourni)
-    df = df.rename(columns={
-        'ColumnA': 'NouvelleColonneA',  # Exemple : Changez les noms selon vos données
-        'ColumnB': 'NouvelleColonneB',
-    })
+        # Transformer la colonne timestamp
+        if timestamp_col:
+            try:
+                data[timestamp_col] = pd.to_datetime(data[timestamp_col], errors='coerce')
+                data['Year'] = data[timestamp_col].dt.year
+                data['Month'] = data[timestamp_col].dt.month
+                data['Day'] = data[timestamp_col].dt.day
 
-    # 2. Filtrer ou transformer les données (adaptez selon les transformations requises)
-    df['NouvelleColonneC'] = df['NouvelleColonneA'] * 2  # Exemple transformation
+                st.write("Aperçu des données transformées :", data.head())
 
-    # 3. Reformatage ou réorganisation des colonnes
-    df = df[['NouvelleColonneA', 'NouvelleColonneB', 'NouvelleColonneC']]  # Ordre final des colonnes
+                # Bouton de téléchargement
+                @st.cache_data
+                def convert_df_to_csv(df):
+                    return df.to_csv(index=False).encode('utf-8')
 
-    return df
+                csv = convert_df_to_csv(data)
 
-# Streamlit application
-st.title("Transformation des données Bitpanda vers un fichier XLSX")
-
-# Upload des fichiers
-uploaded_csv = st.file_uploader("Téléchargez votre fichier Bitpanda CSV", type="csv")
-
-if uploaded_csv is not None:
-    # Afficher un aperçu des données
-    st.write("Aperçu des données chargées :")
-    df_original = pd.read_csv(uploaded_csv)
-    st.dataframe(df_original.head())
-
-    # Transformer les données
-    df_transforme = transformer_donnees_bitpanda(uploaded_csv)
-
-    # Afficher un aperçu des données transformées
-    st.write("Aperçu des données transformées :")
-    st.dataframe(df_transforme.head())
-
-    # Bouton pour télécharger le fichier transformé
-    @st.cache
-def convertir_excel(df):
-        import io
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-            df.to_excel(writer, index=False, sheet_name="DonnéesTransformées")
-        output.seek(0)
-        return output
-
-    excel_data = convertir_excel(df_transforme)
-    st.download_button(
-        label="Télécharger les données transformées en format XLSX",
-        data=excel_data,
-        file_name="données_transformées.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-
-st.info("Téléchargez un fichier CSV Bitpanda pour démarrer.")
+                st.download_button(
+                    label="Télécharger le fichier transformé",
+                    data=csv,
+                    file_name="transformed_data.csv",
+                    mime="text/csv",
+                )
+            except Exception as e:
+                st.error(f"Erreur lors de la transformation : {e}")
+    except Exception as e:
+        st.error(f"Erreur de lecture du fichier : {e}")
+else:
+    st.info("Veuillez téléverser un fichier pour commencer.")
